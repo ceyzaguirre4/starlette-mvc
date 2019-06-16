@@ -7,7 +7,7 @@ from starlette.applications import Starlette
 from starlette.config import Config
 from starlette.responses import JSONResponse
 
-from .users import create_table as create_users_table
+from .users import *
 import configs
 
 metadata = sqlalchemy.MetaData()

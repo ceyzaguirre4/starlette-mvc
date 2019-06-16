@@ -1,35 +1,43 @@
 import sqlalchemy
+import bcrypt
+import jwt
 from starlette.authentication import (
     AuthenticationBackend, AuthenticationError, SimpleUser, UnauthenticatedUser,
     AuthCredentials
 )
+import configs
 
 
-def create_table(metadata):
+def create_users_table(metadata):
     return sqlalchemy.Table(
         "users",
         metadata,
         sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
         sqlalchemy.Column("name", sqlalchemy.String),
-        sqlalchemy.Column("male", sqlalchemy.Boolean),
+        sqlalchemy.Column("hashed", sqlalchemy.LargeBinary),
     )
 
 
 # for user authentication
 class userAuthentication(AuthenticationBackend):
     async def authenticate(self, request):
-        def is_valid(auth):
-            # TODO: You'd want to verify the username and password here,
-            #       possibly by installing `DatabaseMiddleware`
-            #       and retrieving user information from `request.database`.
-            return True
+        jwt_cookie = request.cookies.get('jwt')
+        if jwt_cookie:      # cookie exists
+            try:
+                payload = jwt.decode(jwt_cookie.encode('utf8'), str(configs.SECRET_KEY), algorithms=['HS256'])
+                return AuthCredentials(["user_auth"]), SimpleUser(payload['username'])
+            except:
+                raise AuthenticationError('Invalid auth credentials')
+        else: 
+            return      # unauthenticated
 
-        if "Authorization" not in request.headers:
-            return
-        
-        auth = request.headers["Authorization"]
+def get_hashed_password(password:str):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
-        if not is_valid(auth):
-            raise AuthenticationError('Invalid basic auth credentials')
+def check_password(password:str, hashed_pass):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_pass)
 
-        return AuthCredentials(["user_auth"]), SimpleUser('TODO:username')
+def generate_jwt(username):
+    payload = {'username': username}
+    token = jwt.encode(payload, str(configs.SECRET_KEY), algorithm='HS256').decode('utf-8')
+    return token
