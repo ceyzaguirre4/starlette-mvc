@@ -7,3 +7,4 @@ _config = Config(".env")
 DEBUG = _config('DEBUG', cast=bool, default=False)
 TESTING = _config('TESTING', cast=bool, default=False)
 SECRET_KEY = _config('SECRET_KEY', cast=Secret)         # casting as secret to minimize exposing its value in tracebacks, etc.
+DATABASE_URL = _config('DATABASE_URL')

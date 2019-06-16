@@ -6,7 +6,7 @@
     {
       "label": "python3",
       "type": "shell",
-      "command": "python3 /Users/ceyzaguirre/starlette-mvc/main.py",
+      "command": "venv/bin/python3 /Users/ceyzaguirre/starlette-mvc/main.py",
       "group": {
         "kind": "build",
         "isDefault": true
