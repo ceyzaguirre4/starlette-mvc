@@ -29,6 +29,12 @@ async def users(request):
 
 @app.route("/login", methods=["POST"])
 async def login_user(request):
+    # redirect to previous path (aquired from session cookie) after login
+    if 'history' in request.session and len(request.session['history']):
+        previous = request.session['history'].pop()
+    else:
+        previous = '/'
+
     # request.form() requieres python-multipart as dependency
     form = await request.form()
     username = form["name"]
@@ -37,16 +43,11 @@ async def login_user(request):
     try:
         results = await database.fetch_one(query)
     except:
-        response = RedirectResponse('/')
+        return RedirectResponse(previous)
     hashed_pass = results['hashed']
 
     valid_pass = await check_password(form["password"], hashed_pass)
 
-    # redirect to previous path (aquired from session cookie) after login
-    if 'history' in request.session and len(request.session['history']):
-        previous = request.session['history'].pop()
-    else:
-        previous = '/'
     response = RedirectResponse(previous)
     if valid_pass:
         response.set_cookie('jwt', generate_jwt(results['id']), httponly=True)
