@@ -11,7 +11,10 @@ from models import *
 
 app = Starlette()
 
+
 @app.route('/')     # methods defaults to GET
+# protected endpoint, any authorized user can access it
+@requires('user_auth')
 async def users(request):
     query = users_table.select()
     results = await database.fetch_all(query)
@@ -23,9 +26,11 @@ async def users(request):
     ]
     return JSONResponse(content)
 
+
 @app.route("/login", methods=["POST"])
 async def login_user(request):
-    form = await request.form()         # request.form() requieres python-multipart as dependency
+    # request.form() requieres python-multipart as dependency
+    form = await request.form()
     username = form["name"]
     password = form["password"]
     query = users_table.select().where(users_table.c.name == username)
@@ -35,37 +40,30 @@ async def login_user(request):
         response = RedirectResponse('/')
     hashed_pass = results['hashed']
 
-    if check_password(form["password"], hashed_pass):
-        response = RedirectResponse('/')
-        response.set_cookie('jwt', generate_jwt(username), httponly=True)
+    valid_pass = await check_password(form["password"], hashed_pass)
+
+    # redirect to previous path (aquired from session cookie) after login
+    if 'history' in request.session and len(request.session['history']):
+        previous = request.session['history'].pop()
     else:
-        response = RedirectResponse('/')
+        previous = '/'
+    response = RedirectResponse(previous)
+    if valid_pass:
+        response.set_cookie('jwt', generate_jwt(results['id']), httponly=True)
     return response
+
 
 @app.route("/", methods=["POST"])
 async def new_user(request):
-    form = await request.form()         # request.form() requieres python-multipart as dependency
+    # request.form() requieres python-multipart as dependency
+    form = await request.form()
     password = form["password"]
-    hashed_pass = get_hashed_password(password)
+    hashed_pass = await get_hashed_password(password)
     query = users_table.insert().values(
-       name=form["name"],
-       hashed=hashed_pass,
+        name=form["name"],
+        hashed=hashed_pass,
     )
     await database.execute(query)
     return JSONResponse({
         "name": form["name"],
     }, status_code=201)
-
-@app.route('/{username}')
-@requires('user_auth')                  # protected endpoint, requires user to be autorized
-async def user(request):
-    username = request.path_params['username']
-    query = users_table.select().where(users_table.c.name == username)
-    try:
-        result = await database.fetch_one(query)
-        content = {
-            "name": result["name"],
-        }
-        return JSONResponse(content)
-    except:
-        return HTMLResponse(status_code=404)

@@ -1,11 +1,7 @@
 from starlette.applications import Starlette
-from starlette.responses import JSONResponse, \
-  PlainTextResponse, \
-  RedirectResponse, \
-  StreamingResponse, \
-  FileResponse
 
 app = Starlette()
+
 
 @app.websocket_route('/')
 async def websocket_endpoint(websocket):
